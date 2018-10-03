@@ -36,7 +36,7 @@
  #### Architecture and Flow Description
  It is roughly like this:
  
- <img alt="arch & flow desc" src="https://github.com/rehehe/xii/arch_flow_desc.jpg" height="70%" width="70%">
+ <img alt="arch & flow desc" src="https://github.com/rehehe/xii/blob/master/arch_flow_desc.jpg" height="70%" width="70%">
  
  As illustrated above:
  - The user request routes by REST service to Reporter
