@@ -1,0 +1,90 @@
+version: '3.6'
+services:
+  dashboard:
+    container_name: dashboard
+    image: xii-dashboard
+    build:
+      context: dashboard
+      target: stag
+      labels:
+      - xii.dashboard
+    ports:
+    - "1100:1100"
+    restart: on-failure
+    entrypoint:
+      - ./dashboard
+      - -bind-address
+      - "0.0.0.0:1100"
+      - -db-uri
+      - "dbuser:dbpassword@tcp(db:3306)/devdb"
+      - -providers
+      - "blue http://survey-blue:1101 red http://survey-red:1102"
+    depends_on:
+      - db
+      - survey-blue
+      - survey-red
+
+  survey-blue:
+    container_name: survey-blue
+    image: xii-survey-blue
+    build:
+      context: survey
+      target: stag
+      labels:
+        - xii.survey.blue
+    ports:
+      - 1101:1101
+    restart: on-failure
+    entrypoint:
+    - ./survey
+    - -bind-address
+    - "0.0.0.0:1101"
+    - -db-uri
+    - "dbuser:dbpassword@tcp(db:3306)/devdb"
+    - -label
+    - "blue"
+    depends_on:
+      - db
+
+  survey-red:
+    container_name: survey-red
+    image: xii-survey-red
+    build:
+      context: survey
+      target: stag
+      labels:
+        - xii.survey.red
+    ports:
+    - 1102:1102
+    restart: on-failure
+    entrypoint:
+    - ./survey
+    - -bind-address
+    - "0.0.0.0:1102"
+    - -db-uri
+    - "dbuser:dbpassword@tcp(db:3306)/devdb"
+    - -label
+    - "red"
+    depends_on:
+      - db
+
+  db:
+    container_name: db
+    image: mysql
+    restart: on-failure
+    ports:
+      - 3306:3306
+    volumes:
+      - mysqldata:/var/lib/mysql
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: devdb
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: dbpassword
+
+volumes:
+  mysqldata:
+
+networks:
+  default:
+    name: xii
