@@ -1,5 +1,13 @@
 package reporter
 
+import (
+	"time"
+)
+
+const (
+	timeout = time.Second * 32
+)
+
 type Service interface {
 	GetReports(r Report, limit int) []Report
 }
@@ -8,9 +16,9 @@ type Repository interface {
 	FindReports(r Report, limit int) []Report
 }
 
-// DBSynchronizer provides check for update by aggregator
-type DBSynchronizer interface {
-	SyncSignal() chan<- chan<- bool
+// DBSyncer provides check for update by aggregator
+type DBSyncer interface {
+	RegForSyncSignal() chan<- chan<- bool
 }
 
 type service struct {
@@ -18,17 +26,21 @@ type service struct {
 	syncSignal chan<- chan<- bool
 }
 
-func NewService(s DBSynchronizer, r Repository) Service {
+func NewService(s DBSyncer, r Repository) Service {
 	return &service{
 		repository: r,
-		syncSignal: s.SyncSignal(),
+		syncSignal: s.RegForSyncSignal(),
 	}
 }
 
 func (s *service) GetReports(r Report, limit int) []Report {
-	isSynced := make(chan bool)
+	isSynced := make(chan bool, 1) // cap: 1 for non-blocking
 	s.syncSignal <- isSynced
-	<-isSynced
 
-	return s.repository.FindReports(r, limit)
+	select {
+	case <-isSynced:
+		return s.repository.FindReports(r, limit)
+	case <-time.After(timeout):
+		return nil
+	}
 }

@@ -8,9 +8,9 @@ services:
       target: stag
       labels:
       - xii.dashboard
+    restart: on-failure
     ports:
     - "1100:1100"
-    restart: on-failure
     entrypoint:
       - ./dashboard
       - -bind-address
@@ -18,7 +18,7 @@ services:
       - -db-uri
       - "dbuser:dbpassword@tcp(db:3306)/devdb"
       - -providers
-      - "blue http://survey-blue:1101 red http://survey-red:1102"
+      - "blue http://survey-blue:1101/api/v1/reporter red http://survey-red:1102/api/v1/reporter"
     depends_on:
       - db
       - survey-blue
@@ -32,9 +32,9 @@ services:
       target: stag
       labels:
         - xii.survey.blue
+    restart: on-failure
     ports:
       - 1101:1101
-    restart: on-failure
     entrypoint:
     - ./survey
     - -bind-address
@@ -54,9 +54,9 @@ services:
       target: stag
       labels:
         - xii.survey.red
+    restart: on-failure
     ports:
     - 1102:1102
-    restart: on-failure
     entrypoint:
     - ./survey
     - -bind-address

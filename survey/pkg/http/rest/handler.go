@@ -2,6 +2,7 @@ package rest
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -43,20 +44,22 @@ func getReports(s report.Service) func(w http.ResponseWriter, r *http.Request, p
 
 func setReport(s report.Service) func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-
-		var report report.Report
-		err := json.NewDecoder(r.Body).Decode(&report)
+		var newReport report.Report
+		err := json.NewDecoder(r.Body).Decode(&newReport)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("json decode error: " + err.Error()))
 		}
 		defer r.Body.Close()
 
-		err = s.SetReport(report)
+		err = s.SetReport(newReport)
 		if err != nil {
 			w.WriteHeader(http.StatusConflict)
+			fmt.Fprintf(w, "not created. err: %v", err)
+			return
 		}
 
 		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, "created")
 	}
 }

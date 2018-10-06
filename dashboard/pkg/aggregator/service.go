@@ -1,20 +1,23 @@
 package aggregator
 
 import (
-	"log"
+	"sync"
 	"time"
 )
 
 var (
-	isSyncedCap           = 16
-	providersCap          = 8
-	tickerTimeoutDuration = time.Millisecond * 3000
-	tickerRateDuration    = time.Millisecond * 100
+	isSyncedInitCap  = 4
+	providersInitCap = 2
+
+	rateThreshold = 256
+	rateDuration  = time.Millisecond * 250
+
+	timeoutDuration = time.Millisecond * 16000
 )
 
 type Service interface {
 	Run()
-	SyncSignal() chan<- chan<- bool
+	RegForSyncSignal() chan<- chan<- bool
 	RegisterNewProvider(Provider)
 }
 
@@ -35,76 +38,118 @@ type service struct {
 	repository Repository
 	providers  []Provider
 
-	syncSignal chan chan<- bool
-	isSynced   []chan<- bool
+	syncSignalReg chan chan<- bool
+	syncSeekers   []chan<- bool
+	syncRequested bool
+	syncSeekerMut sync.Mutex
 
 	result chan []Report
+
+	rateAcc int
+
+	aggMut sync.Mutex
 }
 
 func NewService(r Repository) Service {
 	return &service{
 		repository: r,
-		providers:  make([]Provider, 0, providersCap),
+		providers:  make([]Provider, 0, providersInitCap),
 
-		syncSignal: make(chan chan<- bool),
-		isSynced:   make([]chan<- bool, 0, isSyncedCap),
+		syncSignalReg: make(chan chan<- bool),
+		syncSeekers:   make([]chan<- bool, 0, isSyncedInitCap),
 
 		result: make(chan []Report),
 	}
 }
 
 func (s *service) Run() {
-	timeout := time.NewTicker(tickerTimeoutDuration)
-	rate := time.NewTicker(tickerRateDuration)
-
 	for {
 		select {
-		case isSynced := <-s.syncSignal:
-			s.isSynced = append(s.isSynced, isSynced)
+		case seeker := <-s.syncSignalReg:
+			s.syncSeekerMut.Lock()
+			s.syncSeekers = append(s.syncSeekers, seeker)
+			s.syncSeekerMut.Unlock()
 
-		case reports := <-s.result:
-			s.setReports(reports)
-			log.Printf("isSynced: %v", reports)
-			for k, synced := range s.isSynced {
-				if synced != nil {
-					synced <- true
-					s.isSynced[k] = nil
-				}
+			if len(s.syncSeekers) == 1 {
+				s.syncRequested = true
 			}
 
-		case <-rate.C:
-			for _, isSync := range s.isSynced {
-				if isSync != nil {
-					for _, p := range s.providers {
-						if p != nil {
-							p.Provide() <- s.getLastResultIDbyProvider(p.Name())
-						}
-					}
-				}
-			}
-
-		case <-timeout.C:
-			for k, isSynced := range s.isSynced {
-				if isSynced != nil {
-					isSynced <- true
-					s.isSynced[k] = nil
-				}
+		case <-time.Tick(rateDuration):
+			if s.syncRequested {
+				s.syncRequested = false
+				s.rateAcc = 0
+				s.aggregate()
+			} else if rateThreshold < s.rateAcc {
+				s.rateAcc = 0
+				s.aggregate()
+			} else {
+				s.rateAcc++
 			}
 		}
 	}
 }
 
-func (s *service) RegisterNewProvider(src Provider) {
-	s.providers = append(s.providers, src)
-	src.RegisterResultChan(s.result)
-	go src.Run()
+func (s *service) aggregate() {
+	s.aggMut.Lock()
+	defer s.aggMut.Unlock()
+
+	// results buffer to save them to storage at once
+	resBuf := make([]Report, 0, 1024)
+
+	// get buffered results from previous round after timeout and save it
+	for 0 < len(s.result) {
+		reports := <-s.result
+		resBuf = append(resBuf, reports...)
+	}
+	s.setReports(resBuf)
+
+	// signal all workers for update
+	providerSignaled := 0
+	for _, p := range s.providers {
+		select {
+		case p.Provide() <- s.getLastResultIDbyProvider(p.Name()):
+			providerSignaled++
+		default: // non-blocking send
+		}
+	}
+
+	timeoutTriggered := false
+	timeout := time.After(timeoutDuration)
+	for 0 < providerSignaled && !timeoutTriggered {
+		select {
+		case reports := <-s.result:
+			resBuf = append(resBuf, reports...)
+			providerSignaled--
+
+		case <-timeout:
+			timeoutTriggered = true
+		}
+	}
+	s.setReports(resBuf)
+
+	s.syncSeekerMut.Lock()
+	for _, synced := range s.syncSeekers {
+		synced <- true
+	}
+	s.syncSeekers = s.syncSeekers[:0]
+
+	s.syncSeekerMut.Unlock()
 }
 
-func (s *service) SyncSignal() chan<- chan<- bool {
-	return s.syncSignal
+func (s *service) RegisterNewProvider(p Provider) {
+	s.providers = append(s.providers, p)
+	p.RegisterResultChan(s.result)
+	go p.Run()
+}
+
+func (s *service) RegForSyncSignal() chan<- chan<- bool {
+	return s.syncSignalReg
 }
 
 func (s *service) setReports(rs []Report) error {
+	if len(rs) != 0 {
+
+	}
 	return s.repository.CreateReports(rs)
 }
 

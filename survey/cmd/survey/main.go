@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"strings"
 
 	"xii/survey/pkg/http/rest"
 	"xii/survey/pkg/report"
@@ -45,7 +46,8 @@ func main() {
 
 	r := report.NewService(s)
 
-	log.Printf("web link: http://%s/api/v1/reporter", bindAddr)
+	log.Printf("web link: http://%s/api/v1/reporter",
+		strings.Replace(bindAddr, "0.0.0.0", "localhost", 1))
 	router := rest.Handler(r)
 	log.Fatal(http.ListenAndServe(bindAddr, router))
 }

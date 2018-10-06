@@ -116,5 +116,5 @@ fabric.properties
 .idea/httpRequests
 
 ### User Template
-/**/go.sum
-build
+build/
+**/go.sum

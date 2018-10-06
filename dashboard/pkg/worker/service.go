@@ -20,7 +20,7 @@ type service struct {
 	addr   string
 	lastID uint
 
-	notify chan uint
+	signal chan uint
 	result chan<- []aggregator.Report
 	stop   chan bool
 }
@@ -29,21 +29,26 @@ func NewService(name string, addr string) Service {
 	return &service{
 		name:   name,
 		addr:   addr,
-		notify: make(chan uint),
+		signal: make(chan uint),
 		stop:   make(chan bool),
 	}
 }
 
 func (s *service) Run() {
+	// TODO: handle duplicated requests
 	for {
 		select {
-		case id := <-s.notify:
+		case id := <-s.signal:
 			if s.lastID < id || s.lastID == 0 {
 				rs := s.fetchReport(id)
 				if 0 < len(rs) {
 					s.lastID = rs[len(rs)-1].ID
 					s.result <- rs
+				} else {
+					s.result <- nil
 				}
+			} else {
+				s.result <- nil
 			}
 		case <-s.stop:
 			break
@@ -60,7 +65,7 @@ func (s *service) Name() string {
 }
 
 func (s *service) Provide() chan<- uint {
-	return s.notify
+	return s.signal
 }
 
 func (s *service) RegisterResultChan(result chan<- []aggregator.Report) {

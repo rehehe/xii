@@ -5,7 +5,7 @@ import (
 )
 
 type Report struct {
-	ID                uint `gorm:"primary_key,auto_increment"`
+	ID                uint `gorm:"primary_key"`
 	Text              string
 	Device            string
 	Location          string

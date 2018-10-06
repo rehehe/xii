@@ -41,5 +41,8 @@ func getReports(s reporter.Service) func(w http.ResponseWriter, r *http.Request,
 		e := json.NewEncoder(w)
 		e.SetIndent(" ", " ")
 		e.Encode(reports)
+		if reports == nil {
+			e.Encode("[]")
+		}
 	}
 }

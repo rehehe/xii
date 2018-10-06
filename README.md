@@ -36,7 +36,7 @@
  #### Architecture and Flow Description
  It is roughly like this:
  
- <img alt="arch & flow desc" src="https://github.com/rehehe/xii/blob/master/arch_flow_desc.jpg" height="70%" width="70%">
+ <img alt="arch & flow desc" src="https://github.com/rehehe/xii/blob/master/arch_flow_desc.jpg" height="60%" width="60%">
  
  As illustrated above:
  - The user request routes by REST service to Reporter
@@ -68,10 +68,37 @@ docker-compose up
  make run-dashboard
  make run-survey
  ```
- help | run:
+ or get help to run it :
  ```bash
  ./build/dashboard-linux -h
  ./build/survey-linux -h
+ ```
+ 
+ post to survey & get from dashboard
+ 
+ ```bash
+ curl -H "Content-type: application/json" \
+      -d '{"text":"request: 01 to blue survey","device":"x","location":"y"}' \
+      http://localhost:1101/api/v1/reporter
+ 
+ curl -H "Content-type: application/json" \
+       -d '{"text":"request: 01 to red survey","device":"x","location":"y"}' \
+       http://localhost:1102/api/v1/reporter
+            
+ curl http://localhost:1100/api/v1/reporter
+ ```
+ 
+ run MySQL over docker:
+ ```bash
+ docker run \
+      --name mysql \
+      -e MYSQL_ALLOW_EMPTY_PASSWORD="yes" \
+      -e MYSQL_DATABASE=devdb \
+      -e MYSQL_USER=dbuser \
+      -e MYSQL_PASSWORD=dbpassword \
+      -p 3306:3306 \
+      -d \
+      mysql
  ```
   
  ## Intended implementation approach

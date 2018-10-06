@@ -85,8 +85,8 @@ func (s *Storage) CreateReports(rs []aggregator.Report) error {
 }
 
 func (s *Storage) LastResultIDbyProvider(provider string) uint {
-	r := &Report{Provider: provider}
-	s.db.Last(r)
+	r := Report{}
+	s.db.Where(&Report{Provider: provider}).Last(&r)
 	return r.ProviderID
 }
 

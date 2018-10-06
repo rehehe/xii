@@ -41,11 +41,13 @@ func flags() {
 	var providersStr string
 	flag.StringVar(&providersStr,
 		"providers",
-		"blue localhost:1101/api/v1/reporter?limit=1000 red localhost:1102/api/v1/reporter?limit=1000",
+		"blue http://localhost:1101/api/v1/reporter?limit=1000 "+
+			"red http://localhost:1102/api/v1/reporter?limit=1000",
 		"space separated pair of providersStr/survey-suppliers title and URL")
 	flag.StringVar(&providersStr,
-		"s",
-		"blue localhost:1101/api/v1/reporter?limit=1000 red localhost:1102/api/v1/reporter?limit=1000",
+		"p",
+		"blue http://localhost:1101/api/v1/reporter?limit=1000 "+
+			"red http://localhost:1102/api/v1/reporter?limit=1000",
 		"providersStr shorthand")
 
 	flag.Parse()
@@ -70,13 +72,15 @@ func main() {
 	agg := aggregator.NewService(sto)
 	for i := 0; i < len(providers); i += 2 {
 		agg.RegisterNewProvider(
-			worker.NewService(providers[i], providers[i+1]))
+			worker.NewService(providers[i], providers[i+1]),
+		)
 	}
 	go agg.Run()
 
 	r := reporter.NewService(agg, sto)
 
-	log.Printf("web link: http://%s/api/v1/reporter", bindAddr)
+	log.Printf("web link: http://%s/api/v1/reporter",
+		strings.Replace(bindAddr, "0.0.0.0", "localhost", 1))
 	router := rest.Handler(r)
 	log.Fatal(http.ListenAndServe(bindAddr, router))
 }
