@@ -1,5 +1,5 @@
- # XII-Traits BeD Challenge
- Multi-provider Data Aggregation
+ # XII-Traits Backend Challenge
+ Multi-provider Data Aggregation ([plz read the challlenge discription first](https://github.com/rehehe/xii/blob/master/challenge.md))
  
  ## Prerequisites
  
