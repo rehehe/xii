@@ -27,7 +27,7 @@ The dashboard should do the following:
 - Expose an HTTP API to display the aggregated information. This API should support at least two features: limit and filter. For example, it should be possible to ask to return only survey results only from iOS users based in Germany.
 
 At the end should look roughly like this:
-![Schematic](https://github.com/12traits/coding-challenges/blob/master/backend-challenge.png)
+<img alt="backend challenge chart" src="https://github.com/rehehe/xii/blob/master/backend-challenge-chart.png">
 
 
 #### Considerations
